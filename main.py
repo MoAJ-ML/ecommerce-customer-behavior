@@ -1,4 +1,5 @@
 import os
+import zipfile
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,39 +13,47 @@ os.makedirs(VIS_DIR, exist_ok=True)
 
 def load_and_clean_data(filepath):
     """Load data, handle missing values, and ensure correct types."""
-    df = pd.read_csv(filepath)
+    if os.path.exists(filepath):
+        df = pd.read_csv(filepath)
+    elif os.path.exists('archive (2).zip'):
+        with zipfile.ZipFile('archive (2).zip') as archive:
+            with archive.open(os.path.basename(filepath)) as source:
+                df = pd.read_csv(source)
+    else:
+        raise FileNotFoundError(f"Provide {filepath} or archive (2).zip")
     # Handle missing values
     df = df.dropna(subset=['Customer ID'])
     # Fill or drop other missing values as appropriate
     # Convert columns to correct types
-    df['Discount Applied'] = df['Discount Applied'].astype(bool)
+    df['Discount Applied'] = df['Discount Applied'].astype(str).str.lower().eq('true')
     return df
 
-def rfm_analysis(df):
-    """Perform RFM segmentation and plot clusters."""
+def segment_customers(df):
+    """Segment customers using recency, item count, and spend proxies."""
     rfm = df[['Customer ID', 'Days Since Last Purchase', 'Items Purchased', 'Total Spend']].copy()
-    rfm.columns = ['CustomerID', 'Recency', 'Frequency', 'Monetary']
+    rfm.columns = ['CustomerID', 'Recency', 'ItemsPurchased', 'Monetary']
     scaler = StandardScaler()
-    rfm_scaled = scaler.fit_transform(rfm[['Recency', 'Frequency', 'Monetary']])
-    kmeans = KMeans(n_clusters=4, random_state=42)
+    rfm_scaled = scaler.fit_transform(rfm[['Recency', 'ItemsPurchased', 'Monetary']])
+    kmeans = KMeans(n_clusters=min(4, len(rfm)), random_state=42, n_init=10)
     rfm['Segment'] = kmeans.fit_predict(rfm_scaled)
     # Plot
     plt.figure(figsize=(8,6))
     sns.scatterplot(x='Recency', y='Monetary', hue='Segment', data=rfm, palette='Set2')
-    plt.title('RFM Segments')
-    plt.savefig(os.path.join(VIS_DIR, 'rfm_segments.png'), dpi=300, bbox_inches='tight')
+    plt.title('Customer Groups: Recency, Item Count, and Spend')
+    plt.savefig(os.path.join(VIS_DIR, 'customer_segments.png'), dpi=300, bbox_inches='tight')
     plt.close()
     return rfm
 
-def cohort_analysis(df):
-    """Approximate cohorts by Membership Type and plot retention."""
-    cohort_pivot = pd.pivot_table(df, index='Membership Type', columns='Satisfaction Level', values='Customer ID', aggfunc='count', fill_value=0)
-    cohort_pivot = cohort_pivot.div(cohort_pivot.sum(axis=1), axis=0)
+def membership_satisfaction_analysis(df):
+    """Plot the satisfaction mix within each membership type."""
+    satisfaction_pivot = pd.pivot_table(df, index='Membership Type', columns='Satisfaction Level', values='Customer ID', aggfunc='count', fill_value=0)
+    satisfaction_pivot = satisfaction_pivot.div(satisfaction_pivot.sum(axis=1), axis=0)
     plt.figure(figsize=(10,6))
-    sns.heatmap(cohort_pivot, annot=True, fmt='.2f', cmap='Blues')
-    plt.title('Cohort Retention Curve (by Membership Type)')
-    plt.savefig(os.path.join(VIS_DIR, 'cohort_retention_curve.png'), dpi=300, bbox_inches='tight')
+    sns.heatmap(satisfaction_pivot, annot=True, fmt='.2f', cmap='Blues')
+    plt.title('Satisfaction Distribution by Membership Type')
+    plt.savefig(os.path.join(VIS_DIR, 'membership_satisfaction.png'), dpi=300, bbox_inches='tight')
     plt.close()
+    return satisfaction_pivot
 
 def spend_by_membership(df):
     """Plot distribution of Total Spend and Items Purchased by Membership Type."""
@@ -74,8 +83,8 @@ def correlation_heatmap(df):
 def main():
     data_path = os.path.join('data', 'E-commerce Customer Behavior - Sheet1.csv')
     df = load_and_clean_data(data_path)
-    rfm = rfm_analysis(df)
-    cohort_analysis(df)
+    segment_customers(df)
+    membership_satisfaction_analysis(df)
     spend_by_membership(df)
     discount_vs_rating(df)
     correlation_heatmap(df)
