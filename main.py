@@ -28,7 +28,7 @@ def load_and_clean_data(filepath):
     df['Discount Applied'] = df['Discount Applied'].astype(str).str.lower().eq('true')
     return df
 
-def rfm_analysis(df):
+def segment_customers(df):
     """Segment customers using recency, item count, and spend proxies."""
     rfm = df[['Customer ID', 'Days Since Last Purchase', 'Items Purchased', 'Total Spend']].copy()
     rfm.columns = ['CustomerID', 'Recency', 'ItemsPurchased', 'Monetary']
@@ -39,8 +39,8 @@ def rfm_analysis(df):
     # Plot
     plt.figure(figsize=(8,6))
     sns.scatterplot(x='Recency', y='Monetary', hue='Segment', data=rfm, palette='Set2')
-    plt.title('RFM Segments')
-    plt.savefig(os.path.join(VIS_DIR, 'rfm_segments.png'), dpi=300, bbox_inches='tight')
+    plt.title('Customer Groups: Recency, Item Count, and Spend')
+    plt.savefig(os.path.join(VIS_DIR, 'customer_segments.png'), dpi=300, bbox_inches='tight')
     plt.close()
     return rfm
 
@@ -83,7 +83,7 @@ def correlation_heatmap(df):
 def main():
     data_path = os.path.join('data', 'E-commerce Customer Behavior - Sheet1.csv')
     df = load_and_clean_data(data_path)
-    rfm = rfm_analysis(df)
+    segment_customers(df)
     membership_satisfaction_analysis(df)
     spend_by_membership(df)
     discount_vs_rating(df)

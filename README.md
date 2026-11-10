@@ -34,7 +34,7 @@ This project explores customer-level e-commerce data using recency, item count, 
 ├── data/                    # Dataset directory
 │   └── E-commerce Customer Behavior - Sheet1.csv  # optional extracted input
 ├── visualization/           # Generated visualizations
-│   ├── rfm_segments.png
+│   ├── customer_segments.png
 │   ├── membership_satisfaction.png
 │   ├── spend_by_membership.png
 │   ├── discount_vs_rating.png
